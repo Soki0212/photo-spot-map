@@ -121,7 +121,7 @@ label{font-size:13px;font-weight:650}
 <div id="map"></div>
 <aside>
 <button type="button" id="panelToggle">地図を広く表示 ▲</button>
-<div id="notice" class="status">地図をタップすると撮影地を登録できます。</div>
+ <div id="notice" class="status hidden"></div>
 <div class="legend">
 <span><i class="dot" style="background:#22a06b"></i>順光</span>
 <span><i class="dot" style="background:#e5ae24"></i>斜光</span>
@@ -154,7 +154,6 @@ label{font-size:13px;font-weight:650}
 </section>
 
 <section id="detail" class="hidden">
-<button type="button" id="closeDetailButton" class="secondary">閉じる ×</button>
 <div id="detailContent"></div>
 </section>
 <h3>登録済み撮影地</h3>
@@ -456,9 +455,7 @@ for(const file of [...$('photos').files]){
 async function showDetail(spot){
  $('formArea').classList.add('hidden');
  $('detail').classList.remove('hidden');
-$('closeDetailButton').onclick=()=>{
- $('detail').classList.add('hidden');
-};
+
  const light=getLight(spot);
 $('detailContent').innerHTML=`
  <h3>${escapeHTML(spot.name)}</h3>
