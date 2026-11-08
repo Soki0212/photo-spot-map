@@ -469,6 +469,10 @@ for(const file of [...$('photos').files]){
 async function showDetail(spot){
  $('formArea').classList.add('hidden');
  $('detail').classList.remove('hidden');
+  // 白いパネルを自動で開く
+ const aside=document.querySelector('main aside');
+ aside.classList.remove('panel-closed');
+ $('panelToggle').textContent='地図を広く表示 ▲';
 
  const light=getLight(spot);
 $('detailContent').innerHTML=`
