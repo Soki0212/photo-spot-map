@@ -251,9 +251,17 @@ function initializeMap(){
   maxZoom:19,
   attribution:'&copy; OpenStreetMap contributors'
  }).addTo(map);
- map.on('click',event=>{
+map.on('click',event=>{
+
+  // 詳細画面が開いている場合は閉じる
+  if(!$('detail').classList.contains('hidden')){
+    $('detail').classList.add('hidden');
+    return;
+  }
+
+  // 詳細画面が閉じている場合は新規登録
   openForm(null,event.latlng.lat,event.latlng.lng);
- });
+});
 }
 function angleDifference(a,b){
  return Math.abs(((a-b+540)%360)-180);
