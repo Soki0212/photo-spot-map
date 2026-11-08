@@ -353,6 +353,14 @@ async function showDetail(spot){
  <button id="editButton">編集</button>
  <button id="deleteButton" class="danger">削除</button>`;
  const box=$('photoBox');
+ const mapLink=document.createElement('a');
+mapLink.href=`https://www.google.com/maps/search/?api=1&query=${spot.latitude},${spot.longitude}`;
+mapLink.target='_blank';
+mapLink.rel='noopener noreferrer';
+mapLink.textContent='Googleマップで開く';
+mapLink.style.display='inline-block';
+mapLink.style.margin='10px 0';
+$('detail').insertBefore(mapLink,box);
  box.innerHTML='';
  for(const path of (spot.photo_paths||[])){
   const {data,error}=await db.storage.from('spot-photos').createSignedUrl(path,3600);
