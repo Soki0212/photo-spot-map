@@ -253,9 +253,15 @@ function initializeMap(){
  }).addTo(map);
 map.on('click',event=>{
 
-  // 詳細画面が開いている場合は閉じる
+  // 詳細画面が開いている場合
   if(!$('detail').classList.contains('hidden')){
     $('detail').classList.add('hidden');
+
+    // 白いパネルも閉じる
+    const aside=document.querySelector('main aside');
+    aside.classList.add('panel-closed');
+    $('panelToggle').textContent='撮影地一覧を開く ▼';
+
     return;
   }
 
