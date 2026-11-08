@@ -3,132 +3,357 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>撮影地マップ</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,"Noto Sans JP",sans-serif;background:#f4f6f8;color:#222}
-header{background:#17365d;color:white;padding:14px 18px}
-h1{font-size:21px;margin:0}
-main{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 60px)}
+body{margin:0;font-family:system-ui,sans-serif;background:#f4f6f8;color:#202b38}
+header{background:#17365d;color:white;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;height:calc(100vh - 65px)}
 #map{height:100%;min-height:400px}
-aside{padding:16px;background:white;overflow:auto}
-input,textarea,button{font:inherit;width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:6px}
-button{background:#1769aa;color:white;border:0;cursor:pointer}
-label{font-size:13px;font-weight:bold}
-.card{border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0}
-.legend{font-size:12px;margin:10px 0}
-@media(max-width:750px){main{display:flex;flex-direction:column;height:auto}#map{height:55vh;min-height:350px}aside{overflow:visible}}
+aside{padding:15px;background:white;overflow:auto;border-left:1px solid #ddd}
+input,textarea,button{font:inherit}
+input,textarea{width:100%;padding:9px;border:1px solid #cbd5df;border-radius:7px;margin:4px 0 10px}
+textarea{min-height:75px}
+button{border:0;border-radius:7px;padding:9px 13px;background:#1769aa;color:white;cursor:pointer;margin:3px 3px 3px 0}
+button.secondary{background:#e7edf3;color:#203247}
+button.danger{background:#b42318}
+label{font-size:13px;font-weight:650}
+.small{font-size:12px;color:#647282}
+.status{background:#eef5fb;padding:10px;border-radius:8px;font-size:13px;margin:10px 0}
+.card{border:1px solid #dce2e8;border-radius:8px;padding:10px;margin:8px 0;cursor:pointer}
+.hidden{display:none!important}
+#login{max-width:430px;margin:8vh auto;background:white;padding:24px;border-radius:12px;box-shadow:0 4px 20px #0001}
+.legend{font-size:12px;display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:3px}
+.photo{max-width:100%;max-height:190px;border-radius:7px;margin:5px}
+.sector-icon{background:transparent;border:0}
+@media(max-width:760px){main{display:flex;flex-direction:column;height:auto}#map{height:55vh;min-height:350px}aside{overflow:visible;border-left:0;border-top:1px solid #ddd}}
 </style>
 </head>
 <body>
-<header><h1>📍 撮影地マップ</h1></header>
+
+<section id="login">
+<h1>📍 撮影地マップ</h1>
+<p class="small">招待されたメンバー専用です。招待メールで登録したメールアドレスでログインしてください。</p>
+<div id="loginMessage" class="status">メールアドレスとパスワードを入力してください。</div>
+<label>メールアドレス</label>
+<input id="email" type="email" autocomplete="username">
+<label>パスワード</label>
+<input id="password" type="password" autocomplete="current-password">
+<button id="loginButton">ログイン</button>
+<button id="resetButton" class="secondary">パスワード再設定メール</button>
+</section>
+
+<div id="application" class="hidden">
+<header>
+<div>
+<h1>📍 撮影地マップ</h1>
+<div class="small" style="color:#dce8f5">撮影地と太陽の向きを確認・共有</div>
+</div>
+<div>
+<label style="color:white">撮影日時</label>
+<input id="datetime" type="datetime-local" style="width:auto;margin:0">
+<button id="logoutButton" class="secondary">ログアウト</button>
+</div>
+</header>
+
 <main>
 <div id="map"></div>
 <aside>
-<h3>撮影日時</h3>
-<input type="datetime-local" id="datetime">
+<div id="notice" class="status">地図をタップすると撮影地を登録できます。</div>
 <div class="legend">
-🟢 順光　🟡 斜光　🔴 逆光　⚪ 夜間
+<span><i class="dot" style="background:#22a06b"></i>順光</span>
+<span><i class="dot" style="background:#e5ae24"></i>斜光</span>
+<span><i class="dot" style="background:#d64545"></i>逆光</span>
+<span><i class="dot" style="background:#89939e"></i>夜間</span>
 </div>
-<p>地図をタップすると撮影地を登録できます。</p>
-<div id="form" style="display:none">
-<h3>撮影地の登録</h3>
+
+<section id="formArea" class="hidden">
+<h3 id="formTitle">撮影地登録</h3>
 <form id="spotForm">
-<input id="name" placeholder="撮影地名" required>
-<input id="composition" placeholder="構図・被写体">
-<input id="bearing" type="number" placeholder="カメラの向き（北0°・東90°）" value="0">
-<textarea id="notes" placeholder="メモ"></textarea>
-<input id="photo" type="file" accept="image/*">
-<button type="submit">登録</button>
-<button type="button" id="cancel">キャンセル</button>
+<input id="spotId" type="hidden">
+<input id="latitude" type="hidden">
+<input id="longitude" type="hidden">
+<label>撮影地名 *</label>
+<input id="spotName" required placeholder="例：道の駅 雨晴">
+<label>構図・被写体</label>
+<input id="composition" placeholder="例：氷見線の電車">
+<label>撮影位置</label>
+<input id="shootingPosition" placeholder="例：3階展望デッキ">
+<label>カメラが向く方角（北0°・東90°） *</label>
+<input id="bearing" type="number" min="0" max="359.9" step="0.1" value="0" required>
+<label>メモ</label>
+<textarea id="notes" placeholder="撮影時の注意点など"></textarea>
+<label>写真（複数選択可）</label>
+<input id="photos" type="file" accept="image/*" multiple>
+<div id="existingPhotos" class="small"></div>
+<button type="submit">保存する</button>
+<button type="button" id="cancelButton" class="secondary">キャンセル</button>
 </form>
-</div>
+</section>
+
+<section id="detail" class="hidden"></section>
 <h3>登録済み撮影地</h3>
-<div id="list"></div>
+<div id="spotList" class="small">読み込み中…</div>
+<p class="small">光の判定は太陽方位とカメラの向きから算出する目安です。地形・建物・反射光は考慮していません。</p>
 </aside>
 </main>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
 <script>
-const map=L.map('map').setView([36.814938,137.041490],12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19,attribution:'© OpenStreetMap contributors'
-}).addTo(map);
+const SUPABASE_URL = 'https://hpxzbawqfiulwlmecotz.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_mrDdwB7mr0jcPRPimkgeJA_BO-utjap';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const spots=[];
-let selected=null;
+const $ = id => document.getElementById(id);
+let map = null;
+let spots = [];
+let markers = [];
+let editing = false;
 
-const dt=document.getElementById('datetime');
-function localTime(){
-const d=new Date();
-const p=n=>String(n).padStart(2,'0');
-dt.value=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+function notice(message){ $('notice').textContent = message; }
+function loginMessage(message){ $('loginMessage').textContent = message; }
+function escapeHTML(value){
+ return String(value ?? '').replace(/[&<>"']/g,c=>({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
 }
-localTime();
-
-function angle(a,b){return Math.abs(((a-b+540)%360)-180)}
-
-function light(s){
-const date=new Date(dt.value);
-const p=SunCalc.getPosition(date,s.lat,s.lng);
-const altitude=p.altitude*180/Math.PI;
-const sunAz=(p.azimuth*180/Math.PI+180+360)%360;
-if(altitude<=0)return ['#89939e','夜間'];
-const diff=angle(sunAz,(s.bearing+180)%360);
-if(diff<=45)return ['#22a06b','順光'];
-if(diff>=135)return ['#d64545','逆光'];
-return ['#e5ae24','斜光'];
+function localDateValue(date){
+ const p=n=>String(n).padStart(2,'0');
+ return `${date.getFullYear()}-${p(date.getMonth()+1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
 }
+$('datetime').value=localDateValue(new Date());
 
-function render(){
-spots.forEach(s=>{
-if(s.marker)map.removeLayer(s.marker);
-const [color,label]=light(s);
-const icon=L.divIcon({
-className:'',
-html:`<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center">
-<svg width="34" height="34" viewBox="0 0 40 40">
-<path d="M20 20 L8 4 A20 20 0 0 1 32 4 Z" fill="${color}" stroke="#222" stroke-width="1.5" transform="rotate(${s.bearing},20,20)"/>
-<circle cx="20" cy="20" r="4" fill="#222"/>
-</svg></div>`,
-iconSize:[34,34],iconAnchor:[17,17]
+$('loginButton').onclick=async()=>{
+ const {error}=await db.auth.signInWithPassword({
+  email:$('email').value.trim(),
+  password:$('password').value
+ });
+ if(error) loginMessage('ログインエラー：'+error.message);
+};
+$('resetButton').onclick=async()=>{
+ const email=$('email').value.trim();
+ if(!email){loginMessage('先にメールアドレスを入力してください。');return;}
+ const {error}=await db.auth.resetPasswordForEmail(email);
+ loginMessage(error?'送信エラー：'+error.message:'再設定メールを送信しました。メールをご確認ください。');
+};
+$('logoutButton').onclick=async()=>{await db.auth.signOut();location.reload();};
+
+db.auth.onAuthStateChange((event,session)=>{
+ if(session) openApplication();
+ else if(event==='SIGNED_OUT'){
+  $('application').classList.add('hidden');
+  $('login').classList.remove('hidden');
+ }
 });
-s.marker=L.marker([s.lat,s.lng],{icon}).addTo(map);
-s.marker.bindPopup(`<b>${s.name}</b><br>${s.composition}<br>${label}`);
-});
-document.getElementById('list').innerHTML=spots.map((s,i)=>
-`<div class="card"><b>${s.name}</b><br>${s.composition||''}<br><button onclick="map.setView([${s.lat},${s.lng}],16)">地図で表示</button></div>`
-).join('');
-}
-dt.addEventListener('change',render);
-
-map.on('click',e=>{
-selected=e.latlng;
-document.getElementById('form').style.display='block';
+db.auth.getSession().then(({data})=>{
+ if(data.session) openApplication();
 });
 
-document.getElementById('cancel').onclick=()=>{
-document.getElementById('form').style.display='none';
+function openApplication(){
+ $('login').classList.add('hidden');
+ $('application').classList.remove('hidden');
+ if(!map) initializeMap();
+ loadSpots();
+}
+function initializeMap(){
+ map=L.map('map').setView([36.814938,137.041490],12);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,
+  attribution:'&copy; OpenStreetMap contributors'
+ }).addTo(map);
+ map.on('click',event=>{
+  openForm(null,event.latlng.lat,event.latlng.lng);
+ });
+}
+function angleDifference(a,b){
+ return Math.abs(((a-b+540)%360)-180);
+}
+function getLight(spot){
+ const date=new Date($('datetime').value);
+ const p=SunCalc.getPosition(date,spot.latitude,spot.longitude);
+ const altitude=p.altitude*180/Math.PI;
+ const sunAzimuth=(p.azimuth*180/Math.PI+180+360)%360;
+
+ if(altitude<=0) return {color:'#89939e',label:'夜間',altitude,sunAzimuth};
+
+ // カメラの向きは「カメラから被写体へ」。
+ // 太陽がカメラ側（bearing+180°）なら順光。
+ const difference=angleDifference(sunAzimuth,(Number(spot.bearing)+180)%360);
+
+ if(difference<=45) return {color:'#22a06b',label:'順光',altitude,sunAzimuth};
+ if(difference>=135) return {color:'#d64545',label:'逆光',altitude,sunAzimuth};
+ return {color:'#e5ae24',label:'斜光',altitude,sunAzimuth};
+}
+function sectorSVG(color,bearing){
+ return `<svg width="38" height="38" viewBox="0 0 40 40">
+ <path d="M20 20 L8 4 A20 20 0 0 1 32 4 Z"
+ fill="${color}" fill-opacity=".82" stroke="#172b4d" stroke-width="1.5"
+ transform="rotate(${bearing},20,20)"/>
+ <circle cx="20" cy="20" r="4" fill="#172b4d" stroke="white" stroke-width="1"/>
+ </svg>`;
+}
+function renderMap(){
+ markers.forEach(marker=>map.removeLayer(marker));
+ markers=[];
+ const date=new Date($('datetime').value);
+ spots.forEach(spot=>{
+  const light=getLight(spot);
+  const icon=L.divIcon({
+   className:'sector-icon',
+   html:sectorSVG(light.color,Number(spot.bearing)||0),
+   iconSize:[38,38],iconAnchor:[19,19]
+  });
+  const marker=L.marker([spot.latitude,spot.longitude],{icon}).addTo(map);
+  marker.bindTooltip(`${spot.name}：${light.label}`);
+  marker.on('click',()=>showDetail(spot));
+  markers.push(marker);
+ });
+ renderList();
+}
+$('datetime').addEventListener('change',renderMap);
+
+async function loadSpots(){
+ notice('撮影地を読み込んでいます…');
+ const {data,error}=await db.from('photo_spots').select('*').order('created_at',{ascending:false});
+ if(error){notice('読み込みエラー：'+error.message);return;}
+ spots=data||[];
+ renderMap();
+ notice('地図をタップすると撮影地を登録できます。');
+}
+function renderList(){
+ const list=$('spotList');
+ list.innerHTML='';
+ if(!spots.length){
+  list.textContent='登録はまだありません。地図をタップして登録してください。';
+  return;
+ }
+ spots.forEach(spot=>{
+  const item=document.createElement('div');
+  item.className='card';
+  const title=document.createElement('strong');
+  title.textContent=spot.name;
+  const sub=document.createElement('div');
+  sub.className='small';
+  sub.textContent=spot.composition||'';
+  item.append(title,sub);
+  item.onclick=()=>{
+   map.setView([spot.latitude,spot.longitude],16);
+   showDetail(spot);
+  };
+  list.appendChild(item);
+ });
+}
+function openForm(spot,lat,lng){
+ editing=!!spot;
+ $('detail').classList.add('hidden');
+ $('formArea').classList.remove('hidden');
+ $('formTitle').textContent=spot?'撮影地を編集':'撮影地を登録';
+ $('spotId').value=spot?.id||'';
+ $('latitude').value=spot?.latitude??lat;
+ $('longitude').value=spot?.longitude??lng;
+ $('spotName').value=spot?.name||'';
+ $('composition').value=spot?.composition||'';
+ $('shootingPosition').value=spot?.shooting_position||'';
+ $('bearing').value=spot?.bearing??0;
+ $('notes').value=spot?.notes||'';
+ $('photos').value='';
+ $('existingPhotos').textContent=spot?.photo_paths?.length
+  ? `登録済み写真：${spot.photo_paths.length}枚（新しい写真を追加できます）`
+  : '登録済み写真はありません。';
+}
+$('cancelButton').onclick=()=>{$('formArea').classList.add('hidden');};
+
+$('spotForm').onsubmit=async event=>{
+ event.preventDefault();
+ notice('撮影地を保存しています…');
+ const {data:{user}}=await db.auth.getUser();
+ if(!user){notice('ログイン状態を確認できません。再ログインしてください。');return;}
+
+ const row={
+  name:$('spotName').value.trim(),
+  composition:$('composition').value,
+  latitude:Number($('latitude').value),
+  longitude:Number($('longitude').value),
+  bearing:Number($('bearing').value),
+  shooting_position:$('shootingPosition').value,
+  notes:$('notes').value
+ };
+ let result;
+ if(editing){
+  result=await db.from('photo_spots').update(row).eq('id',$('spotId').value).select().single();
+ }else{
+  row.owner_id=user.id;
+  result=await db.from('photo_spots').insert(row).select().single();
+ }
+ if(result.error){notice('保存エラー：'+result.error.message);return;}
+
+ const spot=result.data;
+ const uploaded=[...(spot.photo_paths||[])];
+ for(const file of [...$('photos').files]){
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=`shared/${spot.id}/${Date.now()}-${safeName}`;
+  const upload=await db.storage.from('spot-photos').upload(path,file);
+  if(upload.error){notice('撮影地は保存されましたが写真の保存に失敗：'+upload.error.message);continue;}
+  uploaded.push(path);
+ }
+ if(uploaded.length){
+  const update=await db.from('photo_spots').update({photo_paths:uploaded}).eq('id',spot.id);
+  if(update.error){notice('写真情報の保存エラー：'+update.error.message);return;}
+ }
+ $('formArea').classList.add('hidden');
+ await loadSpots();
+ const saved=spots.find(s=>s.id===spot.id);
+ if(saved) showDetail(saved);
+ notice('保存しました。');
 };
 
-document.getElementById('spotForm').onsubmit=e=>{
-e.preventDefault();
-const s={
-name:document.getElementById('name').value,
-composition:document.getElementById('composition').value,
-bearing:Number(document.getElementById('bearing').value)||0,
-notes:document.getElementById('notes').value,
-lat:selected.lat,lng:selected.lng
-};
-spots.push(s);
-e.target.reset();
-document.getElementById('form').style.display='none';
-render();
-};
-
-render();
+async function showDetail(spot){
+ $('formArea').classList.add('hidden');
+ $('detail').classList.remove('hidden');
+ const light=getLight(spot);
+ $('detail').innerHTML=`
+ <h3>${escapeHTML(spot.name)}</h3>
+ <p><b>${light.label}</b>　
+ 太陽高度 ${light.altitude.toFixed(1)}° /
+ 太陽方位 ${light.sunAzimuth.toFixed(1)}°</p>
+ <p>${escapeHTML(spot.composition||'')}<br>
+ ${escapeHTML(spot.shooting_position||'')}</p>
+ <p>${escapeHTML(spot.notes||'')}</p>
+ <div id="photoBox" class="small">写真を読み込んでいます…</div>
+ <button id="editButton">編集</button>
+ <button id="deleteButton" class="danger">削除</button>`;
+ const box=$('photoBox');
+ box.innerHTML='';
+ for(const path of (spot.photo_paths||[])){
+  const {data,error}=await db.storage.from('spot-photos').createSignedUrl(path,3600);
+  if(!error){
+   const img=document.createElement('img');
+   img.className='photo';
+   img.src=data.signedUrl;
+   box.appendChild(img);
+  }
+ }
+ if(!spot.photo_paths?.length) box.textContent='写真はまだ登録されていません。';
+ $('editButton').onclick=()=>openForm(spot);
+ $('deleteButton').onclick=async()=>{
+  if(!confirm('この撮影地を削除しますか？'))return;
+  const {error}=await db.from('photo_spots').delete().eq('id',spot.id);
+  if(error){notice('削除エラー：'+error.message);return;}
+  if(spot.photo_paths?.length){
+   await db.storage.from('spot-photos').remove(spot.photo_paths);
+  }
+  $('detail').classList.add('hidden');
+  await loadSpots();
+  notice('撮影地を削除しました。');
+ };
+}
 </script>
 </body>
 </html>
