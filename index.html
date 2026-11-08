@@ -145,23 +145,32 @@ $('resetButton').onclick=async()=>{
 };
 $('logoutButton').onclick=async()=>{await db.auth.signOut();location.reload();};
 
-db.auth.onAuthStateChange((event,session)=>{
+db.auth.onAuthStateChange((event, session)=>{
  if(event === 'PASSWORD_RECOVERY'){
-  const newPassword = prompt('新しいパスワードを入力してください（8文字以上）');
-  if(newPassword && newPassword.length >= 8){
-   db.auth.updateUser({password:newPassword}).then(({error})=>{
-    if(error){
-     alert('パスワード変更エラー：'+error.message);
-    }else{
-     alert('パスワードを変更しました。新しいパスワードでログインできます。');
-    }
+  setTimeout(async ()=>{
+   const newPassword = prompt('新しいパスワードを入力してください（8文字以上）');
+
+   if(newPassword === null) return;
+
+   if(newPassword.length < 8){
+    alert('パスワードは8文字以上にしてください。');
+    return;
+   }
+
+   const {error} = await db.auth.updateUser({
+    password:newPassword
    });
-  }else if(newPassword !== null){
-   alert('パスワードは8文字以上にしてください。');
-  }
+
+   if(error){
+    alert('パスワード変更エラー：'+error.message);
+   }else{
+    alert('パスワードを変更しました！');
+   }
+  }, 0);
  }
+
  if(session) openApplication();
- else if(event==='SIGNED_OUT'){
+ else if(event === 'SIGNED_OUT'){
   $('application').classList.add('hidden');
   $('login').classList.remove('hidden');
  }
