@@ -351,6 +351,10 @@ function openForm(spot,lat,lng){
  editing=!!spot;
  $('detail').classList.add('hidden');
  $('formArea').classList.remove('hidden');
+  // 白いパネルを自動で開く
+ const aside=document.querySelector('main aside');
+ aside.classList.remove('panel-closed');
+ $('panelToggle').textContent='地図を広く表示 ▲';
  $('formTitle').textContent=spot?'撮影地を編集':'撮影地を登録';
  $('spotId').value=spot?.id||'';
  $('latitude').value=spot?.latitude??lat;
