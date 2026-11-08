@@ -95,7 +95,10 @@ label{font-size:13px;font-weight:650}
 </form>
 </section>
 
-<section id="detail" class="hidden"></section>
+<section id="detail" class="hidden">
+<button type="button" id="closeDetailButton" class="secondary">閉じる ×</button>
+<div id="detailContent"></div>
+</section>
 <h3>登録済み撮影地</h3>
 <div id="spotList" class="small">読み込み中…</div>
 <p class="small">光の判定は太陽方位とカメラの向きから算出する目安です。地形・建物・反射光は考慮していません。</p>
@@ -340,8 +343,11 @@ $('spotForm').onsubmit=async event=>{
 async function showDetail(spot){
  $('formArea').classList.add('hidden');
  $('detail').classList.remove('hidden');
+$('closeDetailButton').onclick=()=>{
+ $('detail').classList.add('hidden');
+};
  const light=getLight(spot);
- $('detail').innerHTML=`
+$('detailContent').innerHTML=`
  <h3>${escapeHTML(spot.name)}</h3>
  <p><b>${light.label}</b>　
  太陽高度 ${light.altitude.toFixed(1)}° /
