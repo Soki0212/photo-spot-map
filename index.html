@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>撮影地マップ</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Noto Sans JP",sans-serif;background:#f4f6f8;color:#222}
+header{background:#17365d;color:white;padding:14px 18px}
+h1{font-size:21px;margin:0}
+main{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 60px)}
+#map{height:100%;min-height:400px}
+aside{padding:16px;background:white;overflow:auto}
+input,textarea,button{font:inherit;width:100%;padding:10px;margin:5px 0;border:1px solid #ccc;border-radius:6px}
+button{background:#1769aa;color:white;border:0;cursor:pointer}
+label{font-size:13px;font-weight:bold}
+.card{border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0}
+.legend{font-size:12px;margin:10px 0}
+@media(max-width:750px){main{display:flex;flex-direction:column;height:auto}#map{height:55vh;min-height:350px}aside{overflow:visible}}
+</style>
+</head>
+<body>
+<header><h1>📍 撮影地マップ</h1></header>
+<main>
+<div id="map"></div>
+<aside>
+<h3>撮影日時</h3>
+<input type="datetime-local" id="datetime">
+<div class="legend">
+🟢 順光　🟡 斜光　🔴 逆光　⚪ 夜間
+</div>
+<p>地図をタップすると撮影地を登録できます。</p>
+<div id="form" style="display:none">
+<h3>撮影地の登録</h3>
+<form id="spotForm">
+<input id="name" placeholder="撮影地名" required>
+<input id="composition" placeholder="構図・被写体">
+<input id="bearing" type="number" placeholder="カメラの向き（北0°・東90°）" value="0">
+<textarea id="notes" placeholder="メモ"></textarea>
+<input id="photo" type="file" accept="image/*">
+<button type="submit">登録</button>
+<button type="button" id="cancel">キャンセル</button>
+</form>
+</div>
+<h3>登録済み撮影地</h3>
+<div id="list"></div>
+</aside>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script>
+const map=L.map('map').setView([36.814938,137.041490],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19,attribution:'© OpenStreetMap contributors'
+}).addTo(map);
+
+const spots=[];
+let selected=null;
+
+const dt=document.getElementById('datetime');
+function localTime(){
+const d=new Date();
+const p=n=>String(n).padStart(2,'0');
+dt.value=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+localTime();
+
+function angle(a,b){return Math.abs(((a-b+540)%360)-180)}
+
+function light(s){
+const date=new Date(dt.value);
+const p=SunCalc.getPosition(date,s.lat,s.lng);
+const altitude=p.altitude*180/Math.PI;
+const sunAz=(p.azimuth*180/Math.PI+180+360)%360;
+if(altitude<=0)return ['#89939e','夜間'];
+const diff=angle(sunAz,(s.bearing+180)%360);
+if(diff<=45)return ['#22a06b','順光'];
+if(diff>=135)return ['#d64545','逆光'];
+return ['#e5ae24','斜光'];
+}
+
+function render(){
+spots.forEach(s=>{
+if(s.marker)map.removeLayer(s.marker);
+const [color,label]=light(s);
+const icon=L.divIcon({
+className:'',
+html:`<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center">
+<svg width="34" height="34" viewBox="0 0 40 40">
+<path d="M20 20 L8 4 A20 20 0 0 1 32 4 Z" fill="${color}" stroke="#222" stroke-width="1.5" transform="rotate(${s.bearing},20,20)"/>
+<circle cx="20" cy="20" r="4" fill="#222"/>
+</svg></div>`,
+iconSize:[34,34],iconAnchor:[17,17]
+});
+s.marker=L.marker([s.lat,s.lng],{icon}).addTo(map);
+s.marker.bindPopup(`<b>${s.name}</b><br>${s.composition}<br>${label}`);
+});
+document.getElementById('list').innerHTML=spots.map((s,i)=>
+`<div class="card"><b>${s.name}</b><br>${s.composition||''}<br><button onclick="map.setView([${s.lat},${s.lng}],16)">地図で表示</button></div>`
+).join('');
+}
+dt.addEventListener('change',render);
+
+map.on('click',e=>{
+selected=e.latlng;
+document.getElementById('form').style.display='block';
+});
+
+document.getElementById('cancel').onclick=()=>{
+document.getElementById('form').style.display='none';
+};
+
+document.getElementById('spotForm').onsubmit=e=>{
+e.preventDefault();
+const s={
+name:document.getElementById('name').value,
+composition:document.getElementById('composition').value,
+bearing:Number(document.getElementById('bearing').value)||0,
+notes:document.getElementById('notes').value,
+lat:selected.lat,lng:selected.lng
+};
+spots.push(s);
+e.target.reset();
+document.getElementById('form').style.display='none';
+render();
+};
+
+render();
+</script>
+</body>
+</html>
