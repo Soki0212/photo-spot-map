@@ -365,10 +365,21 @@ $('detail').insertBefore(mapLink,box);
  for(const path of (spot.photo_paths||[])){
   const {data,error}=await db.storage.from('spot-photos').createSignedUrl(path,3600);
   if(!error){
-   const img=document.createElement('img');
-   img.className='photo';
-   img.src=data.signedUrl;
-   box.appendChild(img);
+const img=document.createElement('img');
+img.className='photo';
+img.src=data.signedUrl;
+img.style.cursor='zoom-in';
+img.onclick=()=>{
+ const overlay=document.createElement('div');
+ overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+ const large=document.createElement('img');
+ large.src=img.src;
+ large.style.cssText='max-width:100%;max-height:100%;object-fit:contain;';
+ overlay.appendChild(large);
+ overlay.onclick=()=>overlay.remove();
+ document.body.appendChild(overlay);
+};
+box.appendChild(img);
   }
  }
  if(!spot.photo_paths?.length) box.textContent='写真はまだ登録されていません。';
