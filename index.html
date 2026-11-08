@@ -410,7 +410,7 @@ mapLink.rel='noopener noreferrer';
 mapLink.textContent='Googleマップで開く';
 mapLink.style.display='inline-block';
 mapLink.style.margin='10px 0';
-$('detail').insertBefore(mapLink,box);
+$('detailContent').insertBefore(mapLink,box);
  box.innerHTML='';
  for(const path of (spot.photo_paths||[])){
   const {data,error}=await db.storage.from('spot-photos').createSignedUrl(path,3600);
