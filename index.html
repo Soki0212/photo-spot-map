@@ -561,5 +561,14 @@ box.appendChild(img);
  };
 }
 </script>
+<script>
+if('serviceWorker' in navigator){
+ window.addEventListener('load',()=>{
+  navigator.serviceWorker.register('./sw.js')
+   .then(()=>console.log('オフライン機能を登録しました'))
+   .catch(error=>console.error('登録エラー:',error));
+ });
+}
+</script>
 </body>
 </html>
