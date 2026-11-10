@@ -311,12 +311,44 @@ function renderMap(){
 $('datetime').addEventListener('change',renderMap);
 
 async function loadSpots(){
- notice('撮影地を読み込んでいます…');
- const {data,error}=await db.from('photo_spots').select('*').order('created_at',{ascending:false});
- if(error){notice('読み込みエラー：'+error.message);return;}
- spots=data||[];
- renderMap();
- notice('地図をタップすると撮影地を登録できます。');
+
+ const cacheKey='photo_spots_offline';
+
+ // まずスマホ内の保存データを読み込む
+ try{
+  const cached=localStorage.getItem(cacheKey);
+
+  if(cached){
+   spots=JSON.parse(cached);
+   renderMap();
+  }
+ }catch(e){
+  console.error('端末内データの読み込みエラー',e);
+ }
+
+ // インターネットから最新データを取得
+ try{
+  const {data,error}=await db
+   .from('photo_spots')
+   .select('*')
+   .order('created_at',{ascending:false});
+
+  if(error) throw error;
+
+  spots=data||[];
+
+  // 最新データをスマホ内にも保存
+  localStorage.setItem(cacheKey,JSON.stringify(spots));
+
+  renderMap();
+
+ }catch(error){
+  console.log('オンライン読み込み失敗：',error);
+
+  if(!spots.length){
+   notice('保存済みの撮影地データがありません。');
+  }
+ }
 }
 function renderList(){
  const list=$('spotList');
