@@ -245,6 +245,70 @@ function initializeMap(){
   maxZoom:19,
   attribution:'&copy; OpenStreetMap contributors'
  }).addTo(map);
+ 
+ // 現在地取得ボタンを追加
+ let currentLocationMarker;
+
+ const gpsControl=L.control({position:'topleft'});
+
+ gpsControl.onAdd=function(){
+  const button=L.DomUtil.create('button','gps-button');
+  button.type='button';
+  button.textContent='📍 現在地を取得';
+  button.style.cssText='background:white;border:2px solid #888;border-radius:5px;padding:9px 12px;font-size:14px;cursor:pointer;';
+
+  L.DomEvent.disableClickPropagation(button);
+
+  button.onclick=()=>{
+   if(!navigator.geolocation){
+    notice('この端末ではGPSを利用できません。');
+    return;
+   }
+
+   button.textContent='現在地を取得中…';
+
+   navigator.geolocation.getCurrentPosition(
+    position=>{
+     const lat=position.coords.latitude;
+     const lng=position.coords.longitude;
+
+     map.setView([lat,lng],16);
+
+     if(currentLocationMarker){
+      map.removeLayer(currentLocationMarker);
+     }
+
+     currentLocationMarker=L.circleMarker([lat,lng],{
+      radius:9,
+      color:'#ffffff',
+      weight:3,
+      fillColor:'#1685ff',
+      fillOpacity:1
+     }).addTo(map);
+
+     currentLocationMarker.bindPopup('現在地').openPopup();
+
+     button.textContent='📍 現在地を取得';
+
+     openForm(null,lat,lng);
+    },
+    error=>{
+     button.textContent='📍 現在地を取得';
+     notice('現在地を取得できませんでした。位置情報の許可を確認してください。');
+    },
+    {
+     enableHighAccuracy:true,
+     timeout:15000,
+     maximumAge:0
+    }
+   );
+  };
+
+  return button;
+ };
+
+ gpsControl.addTo(map);
+
 map.on('click',event=>{
 
   // 詳細画面が開いている場合
