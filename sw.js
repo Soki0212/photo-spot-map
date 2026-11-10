@@ -1,4 +1,4 @@
-const CACHE_NAME = 'photo-map-v2';
+const CACHE_NAME = 'photo-map-v3';
 
 const FILES_TO_CACHE = [
   './',
