@@ -526,24 +526,63 @@ mapLink.style.display='inline-block';
 mapLink.style.margin='10px 0';
 $('detailContent').insertBefore(mapLink,box);
  box.innerHTML='';
+ const photoCache=await caches.open('photo-map-photos-v1');
+
  for(const path of (spot.photo_paths||[])){
-  const {data,error}=await db.storage.from('spot-photos').createSignedUrl(path,3600);
-  if(!error){
-const img=document.createElement('img');
-img.className='photo';
-img.src=data.signedUrl;
-img.style.cursor='zoom-in';
-img.onclick=()=>{
- const overlay=document.createElement('div');
- overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
- const large=document.createElement('img');
- large.src=img.src;
- large.style.cssText='max-width:100%;max-height:100%;object-fit:contain;';
- overlay.appendChild(large);
- overlay.onclick=()=>overlay.remove();
- document.body.appendChild(overlay);
-};
-box.appendChild(img);
+  try{
+   const cacheKey=new Request(
+    location.origin+'/__photo_cache__/'+encodeURIComponent(path)
+   );
+
+   let photoBlob=null;
+
+   // 端末内に保存済みの写真を探す
+   const cached=await photoCache.match(cacheKey);
+
+   if(cached){
+    photoBlob=await cached.blob();
+   }else{
+    // 保存されていなければクラウドから取得
+    const {data,error}=await db.storage
+     .from('spot-photos')
+     .createSignedUrl(path,3600);
+
+    if(error) throw error;
+
+    const response=await fetch(data.signedUrl);
+    if(!response.ok) throw new Error('写真を取得できません');
+
+    photoBlob=await response.blob();
+
+    // 端末内に写真を保存
+    await photoCache.put(
+     cacheKey,
+     new Response(photoBlob)
+    );
+   }
+
+   const img=document.createElement('img');
+   img.className='photo';
+   img.src=URL.createObjectURL(photoBlob);
+   img.style.cursor='zoom-in';
+
+   img.onclick=()=>{
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;cursor:zoom-out;';
+
+    const large=document.createElement('img');
+    large.src=img.src;
+    large.style.cssText='max-width:100%;max-height:100%;object-fit:contain;';
+
+    overlay.appendChild(large);
+    overlay.onclick=()=>overlay.remove();
+    document.body.appendChild(overlay);
+   };
+
+   box.appendChild(img);
+
+  }catch(error){
+   console.error('写真の読み込みエラー:',error);
   }
  }
  if(!spot.photo_paths?.length) box.textContent='写真はまだ登録されていません。';
